@@ -9,3 +9,5 @@ database/.Rhistory
 database/.RData
 database/.DS_Store
 *.pdf
+
+/venv-old
