@@ -33,10 +33,26 @@ pd.options.mode.chained_assignment = None
 from os import path
 from scipy.optimize import curve_fit
 from scipy.optimize import newton
+from scipy.optimize import root_scalar
 from scipy.interpolate import interp1d
 from scipy.interpolate import interp2d
 from scipy.interpolate import RegularGridInterpolator as interpnd 
 from astropy.constants import R
+
+def root_solver(f, x, fprime, args, tol, maxiter, fprime2):
+
+    sol = root_scalar(f, args, 'bracket', (1e-3, 1e4), rtol=tol, maxiter=maxiter)
+
+    if sol.converged:
+        return sol.root
+    else:
+        print('Not converged')
+        raise ValueError
+
+newton = root_solver
+
+from legacy_interp2d import legacy_interp2d_wrapper
+interp2d = legacy_interp2d_wrapper
 
 from parameters import *
 
