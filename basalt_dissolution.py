@@ -1,6 +1,8 @@
+# type:ignore
+
 import numpy as np
-from scipy.interpolate import RectBivariateSpline, CubicSpline
-from scipy.optimize import root, curve_fit, root_scalar
+from scipy.interpolate import RectBivariateSpline, CubicSpline, RegularGridInterpolator
+from scipy.optimize import root, curve_fit, root_scalar, newton
 import pandas as pd
 
 from parameters import *
@@ -23,15 +25,12 @@ P = np.array([])
 
 for name, colName in zip(speciesNames['species name'], speciesNames['species col name']):
     
-    data = pd.read_csv('./database/' + name + '_th', \
-                                usecols=['out.' + colName + '.T', \
-                                        'out.' + colName + '.P', \
-                                        'out.' + colName + '.logK'])
+    data = pd.read_csv('./database/' + name + '_th', usecols=['out.' + colName + '.T', 'out.' + colName + '.P', 'out.' + colName + '.logK'])
     
     if data['out.' + colName + '.logK'].isna().any():
 
         def func(X, a, b, c, d, e):
-            x,y = X
+            x, y = X
             return a * (x ** 3) + b * (x ** 2) + c * x + d * y + e
         
         guess = (0.5, 0.5, 0.5, 0.5, 0.5)
@@ -51,7 +50,7 @@ for name, colName in zip(speciesNames['species name'], speciesNames['species col
         y = data[pd.isnull(data['out.' + colName + '.logK'])]['out.' + colName + '.P'].values
         n = data[pd.isnull(data['out.' + colName + '.logK'])].index.astype(float).values
         
-        data['out.' + colName + '.logK'][n] = func((x, y), *colParams['out.' + colName + '.logK'])
+        data.loc[n, 'out.' + colName + '.logK'] = func((x, y), *colParams['out.' + colName + '.logK'])
     
     speciesDict[name] = data
 
@@ -239,15 +238,11 @@ KeqFuncs['co2c'] = interp2d(T, P, Keq_CO2c, kind='linear')
 
 # Calculate DIC and pH components for basalt dissolution
 
-x_CO2g_range = xCO2
-Temp_range = T
-Pres_range = P
+x_CO2g_range = np.logspace(-8, 0)
+Temp_range = np.linspace(273.15, 372.15)
+Pres_range = np.logspace(-2, 3) 
 
 Pres, Temp, x_CO2g = np.meshgrid(Pres_range, Temp_range, x_CO2g_range)
-
-Temp = 280
-Pres = 1
-x_CO2g = 280e-6
 
 K_woll = KeqFuncs['woll'](Temp, Pres)
 K_enst = KeqFuncs['enst'](Temp, Pres)
@@ -260,32 +255,30 @@ K_wate = KeqFuncs['wate'](Temp, Pres)
 K_co2a = KeqFuncs['co2a'](Temp, Pres)
 
 act_CO2_aq      =   x_CO2g * K_co2a
-a               =   2 * (K_woll ** 2) * K_carb
-b               =   (K_woll ** 2) * K_wate + K_woll**2 * K_bica * x_CO2g
-c               =   - (x_CO2g ** 2) * ((K_woll ** 2) * (K_bica ** 2) + (K_anor ** 4) * K_bica * K_albi)
-d               =   - (x_CO2g ** 3) * 2 * K_woll * (K_anor ** 2) * K_bica * (K_woll + K_enst + K_ferr)
-
-print(act_CO2_aq.shape)
+a_vals               =   2 * (K_woll ** 2) * K_carb
+b_vals               =   (K_woll ** 2) * K_wate + K_woll**2 * K_bica * x_CO2g
+c_vals               =   - (x_CO2g ** 2) * ((K_woll ** 2) * (K_bica ** 2) + (K_anor ** 4) * K_bica * K_albi)
+d_vals               =   - (x_CO2g ** 3) * 2 * K_woll * (K_anor ** 2) * K_bica * (K_woll + K_enst + K_ferr)
 
 # system of equations to solve for the activity of HCO3- 
 
-def f(x):
+def f(x, a, b, c, d):
     return x**4 + b/a * x**3 + c/a * x + d/a
 
-def f1(x):
+def f1(x, a, b, c, d):
     return 4 * x**3 + 3 * b/a * x**2 + c/a
 
-def f2(x):
+def f2(x, a, b, c, d):
     return 12 * x**2 + 6 * b/a * x
 
 x0  = 10000 * (x_CO2g ** (1/2))
 
-sol = root_scalar(f, fprime=f1, fprime2=f2, x0=x0)
-print(sol)
+# sol = root_scalar(f, fprime=f1, fprime2=f2, x0=x0)
+root = newton(f, x0, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
 
 # x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
 
-act_HCO3_m      = sol.root
+act_HCO3_m      = root
 
 act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
 
@@ -300,18 +293,20 @@ act_SiO2        = K_woll / K_anor**2
 act_DIV_pp      = (1 + K_enst/K_woll + K_ferr/K_woll) * K_anor**2 * (x_CO2g**2 / act_HCO3_m**2)
 act_MON_p       = K_anor**4 / K_woll**2 * (x_CO2g / act_HCO3_m)
 
-allSpecies = {'HCO3': act_HCO3_m,
-              'CO3': act_CO3_mm, 
-              'ALK': alk,
-              'DIC': dic, 
-              'pH': pH, 
-              'H': act_H_p,
-              'SiO2':act_SiO2, 
-              'DIV':act_DIV_pp, 
-              'MON':act_MON_p, 
-              'CO2':act_CO2_aq}
+# allSpecies = {'HCO3': act_HCO3_m,
+#               'CO3': act_CO3_mm, 
+#               'ALK': alk,
+#               'DIC': dic, 
+#               'pH': pH, 
+#               'H': act_H_p,
+#               'SiO2':act_SiO2, 
+#               'DIV':act_DIV_pp, 
+#               'MON':act_MON_p, 
+#               'CO2':act_CO2_aq}
 
-print(allSpecies)
+equilbrium_alkalinity_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), alk)
+equilbrium_carbon_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), dic)
+equilbrium_pH_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), pH)
 
 # KINETICS
 
