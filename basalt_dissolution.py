@@ -8,6 +8,7 @@ import pandas as pd
 from parameters import *
 from legacy_interp2d import legacy_interp2d_wrapper
 interp2d = legacy_interp2d_wrapper
+from kinetics import import_kinetics_data, quar_ki, albi_ki, anor_ki, kfel_ki, fors_ki, faya_ki, enst_ki, ferr_ki, woll_ki, anth_ki, grun_ki, musc_ki, phlo_ki, anni_ki, albi_ki, anor_ki, kfel_ki, musc_ki, phlo_ki, anni_ki
 
 # EQUILBRIUM
 
@@ -58,7 +59,9 @@ for name, colName in zip(speciesNames['species name'], speciesNames['species col
     P = np.unique(data['out.' + colName + '.P'].values)
 
     logKDict[name] = np.reshape(data['out.' + colName + '.logK'].values, (len(P),len(T)))
-    
+
+# makes intepolators for K values
+
 KeqFuncs['woll'] = interp2d(T, P, 10**(      logKDict['Ca+2'] \
                                         +   2*logKDict['HCO3-'] \
                                         +     logKDict['SiO2'] \
@@ -310,4 +313,23 @@ equilbrium_pH_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_r
 
 # KINETICS
 
+# import kinetics data
+kinetics_logKdict = import_kinetics_data()
+    
+kinetics_Funcs   = {}
+
+names = np.array(['quar','albi','anor','kfel','fors','faya','enst','ferr',\
+                    'woll','anth','grun','musc','phlo','anni','albh','anoh',\
+                    'kfeh','mush','phlh','annh'])
+f_names = np.array([quar_ki, albi_ki, anor_ki, kfel_ki, fors_ki, faya_ki, enst_ki, ferr_ki, \
+                    woll_ki, anth_ki, grun_ki, musc_ki, phlo_ki, anni_ki, albi_ki, anor_ki, \
+                    kfel_ki, musc_ki, phlo_ki, anni_ki])
+
+for i, func in enumerate(f_names):
+    kinetics_Funcs[names[i]] = lambda T, pH, f=func: f(T, pH, kinetics_logKdict)
+
+print(kinetics_Funcs['anor'](280, 7))
+    
 # TRANSPORT
+
+
