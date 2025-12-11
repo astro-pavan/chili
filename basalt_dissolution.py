@@ -296,20 +296,10 @@ act_SiO2        = K_woll / K_anor**2
 act_DIV_pp      = (1 + K_enst/K_woll + K_ferr/K_woll) * K_anor**2 * (x_CO2g**2 / act_HCO3_m**2)
 act_MON_p       = K_anor**4 / K_woll**2 * (x_CO2g / act_HCO3_m)
 
-# allSpecies = {'HCO3': act_HCO3_m,
-#               'CO3': act_CO3_mm, 
-#               'ALK': alk,
-#               'DIC': dic, 
-#               'pH': pH, 
-#               'H': act_H_p,
-#               'SiO2':act_SiO2, 
-#               'DIV':act_DIV_pp, 
-#               'MON':act_MON_p, 
-#               'CO2':act_CO2_aq}
-
-equilbrium_alkalinity_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), alk)
-equilbrium_carbon_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), dic)
-equilbrium_pH_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), pH)
+basalt_equilbrium_alkalinity_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), alk)
+basalt_equilbrium_bicarbonate_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), act_HCO3_m)
+basalt_equilbrium_carbon_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), dic)
+basalt_equilbrium_pH_interp = RegularGridInterpolator((Pres_range, Temp_range, x_CO2g_range), pH)
 
 # KINETICS
 
@@ -326,10 +316,28 @@ f_names = np.array([quar_ki, albi_ki, anor_ki, kfel_ki, fors_ki, faya_ki, enst_k
                     kfel_ki, musc_ki, phlo_ki, anni_ki])
 
 for i, func in enumerate(f_names):
-    kinetics_Funcs[names[i]] = lambda T, pH, f=func: f(T, pH, kinetics_logKdict)
-
-print(kinetics_Funcs['anor'](280, 7))
+    kinetics_Funcs[names[i]] = lambda T, pH, f=func: f(T, pH, kinetics_logKdict).value
     
 # TRANSPORT
+
+def transport_concentration(P, T, xCO2, q, phi, m, A_sp, t_s):
+    
+    C_eq = basalt_equilbrium_bicarbonate_interp((P, T, xCO2))
+    pH = basalt_equilbrium_pH_interp((P, T, xCO2))
+
+    k_eff = np.min([
+        kinetics_Funcs['woll'](T, pH),
+        kinetics_Funcs['enst'](T, pH),
+        kinetics_Funcs['ferr'](T, pH),
+        kinetics_Funcs['anor'](T, pH),
+        kinetics_Funcs['albi'](T, pH),
+    ])
+
+    Dw =  phi / (C_eq * (k_eff ** -1 + m * A_sp * t_s))
+
+    return C_eq / (1 + (q / Dw))
+
+print(transport_concentration(1, 280, 280e-6, 1, 1, 1, 1, 1))
+
 
 
