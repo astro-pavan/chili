@@ -40,9 +40,18 @@ from scipy.interpolate import CubicSpline
 from scipy.interpolate import RegularGridInterpolator as interpnd 
 from astropy.constants import R
 
-from parameters import *
-from legacy_interp2d import legacy_interp2d_wrapper
+try:
+    from .parameters import *
+    from .legacy_interp2d import legacy_interp2d_wrapper
+except ImportError:
+    from parameters import *
+    from legacy_interp2d import legacy_interp2d_wrapper
 interp2d = legacy_interp2d_wrapper
+
+from os import path
+from pathlib import Path
+BASE_DIR = Path(__file__).parent
+DATABASE_DIR = BASE_DIR / "database"
 
 # %%
 def import_thermo_data(path_species):
@@ -79,7 +88,7 @@ def import_thermo_data(path_species):
 
     for name,colName in zip(speciesNames['species name'], speciesNames['species col name']):
 
-        data = pd.read_csv('./database/' + name + '_th', \
+        data = pd.read_csv(DATABASE_DIR / (name + '_th'), \
                                   usecols=['out.' + colName + '.T', \
                                            'out.' + colName + '.P', \
                                            'out.' + colName + '.logK'])
@@ -278,7 +287,7 @@ def import_thermo_data(path_species):
                                            -     logKDict['carbon dioxide'] \
                                           ), kind='linear')
     
-    csvData  = pd.read_csv('./database/henry_diamond2003.csv')
+    csvData  = pd.read_csv(DATABASE_DIR / 'henry_diamond2003.csv')
     lnKHFunc = CubicSpline(csvData['T (K)'], csvData['ln (kH, MPa)'], extrapolate=True)
     K_H_Tb   = 10 / 55.5084 * np.exp(lnKHFunc(T)) * np.ones((len(P),len(T))) # convert MPa to bar
     Keq_CO2b = 1 / K_H_Tb

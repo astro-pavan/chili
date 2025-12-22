@@ -41,11 +41,23 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 rc('font', size='16')
 rc('text', usetex=False)
 
-from parameters import *
-import kinetics    as ki
-import equilibrium as eq
-import transport   as tr
-import climate     as cl
+try:
+    from .parameters import *
+    from . import kinetics    as ki
+    from . import equilibrium as eq
+    from . import transport   as tr
+    from . import climate     as cl
+except ImportError:
+    from parameters import *
+    import kinetics    as ki
+    import equilibrium as eq
+    import transport   as tr
+    import climate     as cl
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+DATABASE_DIR = BASE_DIR / "database"
 
 import time
 start = time.time()
@@ -53,7 +65,7 @@ start = time.time()
 # %%
 # Execute CHILI
 print(np.round(time.time() - start),'s, Running CHILI ...')
-KeqFuncs   = eq.import_thermo_data('./database/species.csv')
+KeqFuncs   = eq.import_thermo_data(DATABASE_DIR / 'species.csv')
 DICeqFuncs = eq.get_DICeq(xCO2, T, Pfull, KeqFuncs)
 print(np.round(time.time() - start),'s, Equilibrium calculations complete.')
 

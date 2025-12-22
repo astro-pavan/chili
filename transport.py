@@ -27,9 +27,10 @@ from scipy.interpolate import RegularGridInterpolator as interpnd
 import astropy.units as u
 from astropy.constants import R
 
-from parameters import *
-import equilibrium as eq
-import kinetics    as ki
+try:
+    from .parameters import *
+except ImportError:
+    from parameters import *
 
 # %%
 def C_tr(C_eq, Dw, q):

@@ -36,7 +36,15 @@ from scipy.interpolate import RegularGridInterpolator as interpnd
 import astropy.units as u
 u.imperial.enable()
 from astropy.constants import R
-from parameters import *
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+DATABASE_DIR = BASE_DIR / "database"
+
+try:
+    from .parameters import *
+except ImportError:
+    from parameters import *
 
 # %%
 def import_kinetics_data():
@@ -58,7 +66,7 @@ def import_kinetics_data():
     '''
     
     logkDict = {}
-    df = pd.read_csv('./database/kinetics_data.csv', \
+    df = pd.read_csv(DATABASE_DIR / 'kinetics_data.csv', \
                               skiprows=lambda x: x in [1, 1], \
                               usecols=['Mineral','log10(k_acid)','E_acid', \
                                        'n_acid','log10(k_neut)','E_neut', \

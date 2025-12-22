@@ -41,11 +41,23 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 rc('font', size='16')
 rc('text', usetex=False)
 
-from parameters import *
-import kinetics    as ki
-import equilibrium as eq
-import transport   as tr
-import climate     as cl
+try:
+    from .parameters import *
+    from . import kinetics    as ki
+    from . import equilibrium as eq
+    from . import transport   as tr
+    from . import climate     as cl
+except ImportError:
+    from parameters import *
+    import kinetics    as ki
+    import equilibrium as eq
+    import transport   as tr
+    import climate     as cl
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+DATABASE_DIR = BASE_DIR / "database"
 
 import time
 start = time.time()
@@ -53,7 +65,7 @@ start = time.time()
 # %%
 # Execute CHILI
 print(np.round(time.time() - start),'s, Running CHILI ...')
-KeqFuncs   = eq.import_thermo_data('./database/species.csv')
+KeqFuncs   = eq.import_thermo_data(DATABASE_DIR / 'species.csv')
 DICeqFuncs = eq.get_DICeq(xCO2, T, Pfull, KeqFuncs)
 print(np.round(time.time() - start),'s, Equilibrium calculations complete.')
 
@@ -2136,13 +2148,13 @@ plt.savefig('w_T_rock.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. 10: Calculate weathering rates for Earth
 
-PCO2Func = cl.import_PCO2Func(pd.read_csv('./database/KrisTott2018Fig3B_PCO2.csv'))      
-TempFunc = cl.import_TempFunc(pd.read_csv('./database/KrisTott2018Fig3D_Temp.csv'))      
-contFunc = cl.import_contFunc(pd.read_csv('./database/KrisTott2018Fig3E_cont.csv'))      
-coloFunc = cl.import_contFunc(pd.read_csv('./database/KrisTott2018Fig3E_cont_lower.csv'))
-coupFunc = cl.import_contFunc(pd.read_csv('./database/KrisTott2018Fig3E_cont_upper.csv'))
-seafFunc = cl.import_seafFunc(pd.read_csv('./database/KrisTott2018Fig3F_seaf_B.csv'))    
-seupFunc = cl.import_seafFunc(pd.read_csv('./database/KrisTott2018Fig3F_seaf_upper.csv'))
+PCO2Func = cl.import_PCO2Func(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3B_PCO2.csv'))      
+TempFunc = cl.import_TempFunc(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3D_Temp.csv'))      
+contFunc = cl.import_contFunc(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3E_cont.csv'))      
+coloFunc = cl.import_contFunc(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3E_cont_lower.csv'))
+coupFunc = cl.import_contFunc(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3E_cont_upper.csv'))
+seafFunc = cl.import_seafFunc(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3F_seaf_B.csv'))    
+seupFunc = cl.import_seafFunc(pd.read_csv(DATABASE_DIR / 'KrisTott2018Fig3F_seaf_upper.csv'))
 
 n       = len(tclim)
 Pclim   = PCO2Func(tclim)
