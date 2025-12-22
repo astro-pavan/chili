@@ -1,3 +1,5 @@
+# type: ignore
+
 # %%
 #!/usr/bin/env python
 #
@@ -33,12 +35,14 @@ pd.options.mode.chained_assignment = None
 from os import path
 from scipy.optimize import curve_fit
 from scipy.optimize import newton
-from scipy.interpolate import interp1d
-from scipy.interpolate import interp2d
+from scipy.interpolate import CubicSpline
+# from scipy.interpolate import interp2d
 from scipy.interpolate import RegularGridInterpolator as interpnd 
 from astropy.constants import R
 
 from parameters import *
+from legacy_interp2d import legacy_interp2d_wrapper
+interp2d = legacy_interp2d_wrapper
 
 # %%
 def import_thermo_data(path_species):
@@ -72,37 +76,43 @@ def import_thermo_data(path_species):
     KeqFuncs     = {}
     T = np.array([])
     P = np.array([])
-    for name,colName in zip(speciesNames['species name'], \
-                                          speciesNames['species col name']):
+
+    for name,colName in zip(speciesNames['species name'], speciesNames['species col name']):
+
         data = pd.read_csv('./database/' + name + '_th', \
                                   usecols=['out.' + colName + '.T', \
                                            'out.' + colName + '.P', \
                                            'out.' + colName + '.logK'])
+        
         if data['out.' + colName + '.logK'].isna().any():
+            
             def func(X,a,b,c,d,e):
                 x,y = X
                 return a * x**3 + b * x**2 + c * x + d * y + e
+            
             guess = (0.5, 0.5, 0.5, 0.5, 0.5)
+
             fitData = data.dropna()
             colParams = {}
+
             x = fitData['out.' + colName + '.T'].values
             y = fitData['out.' + colName + '.P'].values
             z = fitData['out.' + colName + '.logK'].values
+
             params = curve_fit(func, (x,y), z, guess)
             colParams['out.' + colName + '.logK'] = params[0]
-            x = data[pd.isnull(data['out.' + colName + '.logK'])]\
-            ['out.' + colName + '.T'].values
-            y = data[pd.isnull(data['out.' + colName + '.logK'])]\
-            ['out.' + colName + '.P'].values
-            n = data[pd.isnull(data['out.' + colName + '.logK'])]\
-            .index.astype(float).values
-            data['out.' + colName + '.logK'][n] = \
-            func((x,y), *colParams['out.' + colName + '.logK'])
+
+            x = data[pd.isnull(data['out.' + colName + '.logK'])]['out.' + colName + '.T'].values
+            y = data[pd.isnull(data['out.' + colName + '.logK'])]['out.' + colName + '.P'].values
+            n = data[pd.isnull(data['out.' + colName + '.logK'])].index.astype(float).values
+
+            data.loc[n, 'out.' + colName + '.logK'] = func((x,y), *colParams['out.' + colName + '.logK'])
+
         speciesDict[name] = data
         T = np.unique(data['out.' + colName + '.T'].values)
         P = np.unique(data['out.' + colName + '.P'].values)
-        logKDict[name] = np.reshape(data['out.' + colName + '.logK'].values,\
-                                    (len(P),len(T)))
+        logKDict[name] = np.reshape(data['out.' + colName + '.logK'].values,(len(P),len(T)))
+
     KeqFuncs['woll'] = interp2d(T, P, 10**(      logKDict['Ca+2'] \
                                            +   2*logKDict['HCO3-'] \
                                            +     logKDict['SiO2'] \
@@ -269,7 +279,7 @@ def import_thermo_data(path_species):
                                           ), kind='linear')
     
     csvData  = pd.read_csv('./database/henry_diamond2003.csv')
-    lnKHFunc = interp1d(csvData['T (K)'],csvData['ln (kH, MPa)'],kind='cubic',fill_value='extrapolate')
+    lnKHFunc = CubicSpline(csvData['T (K)'], csvData['ln (kH, MPa)'], extrapolate=True)
     K_H_Tb   = 10 / 55.5084 * np.exp(lnKHFunc(T)) * np.ones((len(P),len(T))) # convert MPa to bar
     Keq_CO2b = 1 / K_H_Tb
     KeqFuncs['co2b'] = interp2d(T, P, Keq_CO2b, kind='linear')
@@ -396,25 +406,29 @@ def woll_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_woll          =   KeqFuncs['woll'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+    K_woll          =   KeqFuncs['woll'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - x_CO2g**2 * (K_bica**2 + 2*K_bica * K_woll**(1/2))
-    def f(x):
+
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * (K_bica**2 + 2*K_bica * K_woll**(1/2))
+    d_vals               =   0
+
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x
-    def f2(x):
-        return 6 * a * x + 2 * b 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    def f2(x, a, b, c, d):
+        return 6 * a * x + 2 * b
+    
+    x_init  = x_CO2g**(1/2)
+
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
+
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -465,25 +479,25 @@ def enst_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_enst          =   KeqFuncs['enst'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_enst          =   KeqFuncs['enst'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - x_CO2g**2 * (K_bica**2 + 2*K_bica * K_enst**(1/2))
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * (K_bica**2 + 2*K_bica * K_enst**(1/2))
+    d_vals               =   0
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c 
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -534,25 +548,25 @@ def ferr_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_ferr          =   KeqFuncs['ferr'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_ferr          =   KeqFuncs['ferr'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - x_CO2g**2 * (K_bica**2 + 2*K_bica * K_ferr**(1/2))
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * (K_bica**2 + 2*K_bica * K_ferr**(1/2))
+    d_vals               =   0
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -603,26 +617,25 @@ def fors_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_fors          =   KeqFuncs['fors'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_fors          =   KeqFuncs['fors'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - x_CO2g**2 * K_bica**2
-    d               =   - 2**(4/3) * K_bica * K_fors**(1/3) * x_CO2g**(7/3)
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * K_bica**2
+    d_vals               =   - 2**(4/3) * K_bica * K_fors**(1/3) * x_CO2g**(7/3)
+    def f(x, a, b, c, d):
         return a*x**(10/3) + b*x**(7/3) + c*x**(1/3) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return (10/3)*a*x**(7/3) + (7/3)*b*x**(4/3) + (1/3)*c*x**(-2/3)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return (70/9)*a*x**(4/3) + (28/9)*b*x**(1/3) - (2/9)*c*x**(-5/3)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -673,26 +686,25 @@ def faya_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_faya          =   KeqFuncs['faya'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_faya          =   KeqFuncs['faya'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - x_CO2g**2 * K_bica**2
-    d               =   - 2**(4/3) * K_bica * K_faya**(1/3) * x_CO2g**(7/3)
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * K_bica**2
+    d_vals               =   - 2**(4/3) * K_bica * K_faya**(1/3) * x_CO2g**(7/3)
+    def f(x, a, b, c, d):
         return a*x**(10/3) + b*x**(7/3) + c*x**(1/3) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return (10/3)*a*x**(7/3) + (7/3)*b*x**(4/3) + (1/3)*c*x**(-2/3)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return (70/9)*a*x**(4/3) + (28/9)*b*x**(1/3) - (2/9)*c*x**(-5/3)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -743,26 +755,25 @@ def anor_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_anor          =   KeqFuncs['anor'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_anor          =   KeqFuncs['anor'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_bica**2 * x_CO2g**2
-    d               =   - 2 * K_anor**2 * K_bica * x_CO2g**3
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_bica**2 * x_CO2g**2
+    d_vals               =   - 2 * K_anor**2 * K_bica * x_CO2g**3
+    def f(x, a, b, c, d):
         return a * x**4 + b * x**3 + c * x + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * a * x**3 + 3 * b * x**2 + c 
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * a * x**2 + 6 * b * x 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -813,26 +824,25 @@ def anoh_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_anor          =   KeqFuncs['anoh'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_anor          =   KeqFuncs['anoh'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_bica**2 * x_CO2g**2
-    d               =   - 2 * K_anor**2 * K_bica * x_CO2g**3
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_bica**2 * x_CO2g**2
+    d_vals               =   - 2 * K_anor**2 * K_bica * x_CO2g**3
+    def f(x, a, b, c, d):
         return a * x**4 + b * x**3 + c * x + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * a * x**3 + 3 * b * x**2 + c 
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * a * x**2 + 6 * b * x 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -884,26 +894,25 @@ def kfel_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_kfel          =   KeqFuncs['kfel'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_kfel          =   KeqFuncs['kfel'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_kfel**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
-    d               =   - K_bica**2 * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_kfel**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
+    d_vals               =   - K_bica**2 * x_CO2g**2
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c * x**(2/3) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x  +  (2/3) * c * x**(-1/3)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b - (2/9) * c * x**(-4/3)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -954,26 +963,25 @@ def kfeh_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_kfel          =   KeqFuncs['kfeh'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_kfel          =   KeqFuncs['kfeh'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_kfel**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
-    d               =   - K_bica**2 * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_kfel**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
+    d_vals               =   - K_bica**2 * x_CO2g**2
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c * x**(2/3) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x  +  (2/3) * c * x**(-1/3)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b - (2/9) * c * x**(-4/3)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1025,26 +1033,25 @@ def albi_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_albi          =   KeqFuncs['albi'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_albi          =   KeqFuncs['albi'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_albi**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
-    d               =   - K_bica**2 * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_albi**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
+    d_vals               =   - K_bica**2 * x_CO2g**2
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c * x**(2/3) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x  +  (2/3) * c * x**(-1/3)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b - (2/9) * c * x**(-4/3)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1095,26 +1102,25 @@ def albh_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_albi          =   KeqFuncs['albh'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_albi          =   KeqFuncs['albh'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_albi**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
-    d               =   - K_bica**2 * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_albi**(1/3) / 4**(1/3) * K_bica * x_CO2g**(4/3)
+    d_vals               =   - K_bica**2 * x_CO2g**2
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c * x**(2/3) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x  +  (2/3) * c * x**(-1/3)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b - (2/9) * c * x**(-4/3)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1166,25 +1172,25 @@ def musc_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_musc          =   KeqFuncs['musc'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_musc          =   KeqFuncs['musc'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - (K_bica**2 + K_musc * K_bica) * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - (K_bica**2 + K_musc * K_bica) * x_CO2g**2
+    d_vals               =   0
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c 
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1235,25 +1241,25 @@ def mush_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_musc          =   KeqFuncs['mush'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_musc          =   KeqFuncs['mush'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - (K_bica**2 + K_musc * K_bica) * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - (K_bica**2 + K_musc * K_bica) * x_CO2g**2
+    d_vals               =   0
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2  +  c 
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1305,27 +1311,26 @@ def phlo_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_phlo          =   KeqFuncs['phlo'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_phlo          =   KeqFuncs['phlo'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_bica**2 * x_CO2g**2
-    d               =   - 2**(2/3) * 3**(1/2) * K_phlo**(1/2) * K_bica\
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_bica**2 * x_CO2g**2
+    d_vals               =   - 2**(2/3) * 3**(1/2) * K_phlo**(1/2) * K_bica\
                         * x_CO2g**(13/6)
-    def f(x):
+    def f(x, a, b, c, d):
         return a*x**(19/6) + b*x**(13/6) + c*x**(1/6) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return (19/6)*a*x**(13/6) + (13/6)*b*x**(7/6) + (1/6)*c*x**(-5/6)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return (247/36)*a*x**(7/6) + (91/36)*b*x**(1/6) - (5/36)*c*x**(-11/6)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1376,27 +1381,26 @@ def phlh_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_phlo          =   KeqFuncs['phlh'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_phlo          =   KeqFuncs['phlh'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_bica**2 * x_CO2g**2
-    d               =   - 2**(2/3) * 3**(1/2) * K_phlo**(1/2) * K_bica\
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_bica**2 * x_CO2g**2
+    d_vals               =   - 2**(2/3) * 3**(1/2) * K_phlo**(1/2) * K_bica\
                         * x_CO2g**(13/6)
-    def f(x):
+    def f(x, a, b, c, d):
         return a*x**(19/6) + b*x**(13/6) + c*x**(1/6) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return (19/6)*a*x**(13/6) + (13/6)*b*x**(7/6) + (1/6)*c*x**(-5/6)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return (247/36)*a*x**(7/6) + (91/36)*b*x**(1/6) - (5/36)*c*x**(-11/6)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1448,27 +1452,26 @@ def anni_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_anni          =   KeqFuncs['anni'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_anni          =   KeqFuncs['anni'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_bica**2 * x_CO2g**2
-    d               =   - 2**(2/3) * 3**(1/2) * K_anni**(1/2) * K_bica\
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_bica**2 * x_CO2g**2
+    d_vals               =   - 2**(2/3) * 3**(1/2) * K_anni**(1/2) * K_bica\
                         * x_CO2g**(13/6)
-    def f(x):
+    def f(x, a, b, c, d):
         return a*x**(19/6) + b*x**(13/6) + c*x**(1/6) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return (19/6)*a*x**(13/6) + (13/6)*b*x**(7/6) + (1/6)*c*x**(-5/6)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return (247/36)*a*x**(7/6) + (91/36)*b*x**(1/6) - (5/36)*c*x**(-11/6)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1519,27 +1522,26 @@ def annh_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_anni          =   KeqFuncs['annh'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_anni          =   KeqFuncs['annh'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - K_bica**2 * x_CO2g**2
-    d               =   - 2**(2/3) * 3**(1/2) * K_anni**(1/2) * K_bica\
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - K_bica**2 * x_CO2g**2
+    d_vals               =   - 2**(2/3) * 3**(1/2) * K_anni**(1/2) * K_bica\
                         * x_CO2g**(13/6)
-    def f(x):
+    def f(x, a, b, c, d):
         return a*x**(19/6) + b*x**(13/6) + c*x**(1/6) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return (19/6)*a*x**(13/6) + (13/6)*b*x**(7/6) + (1/6)*c*x**(-5/6)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return (247/36)*a*x**(7/6) + (91/36)*b*x**(1/6) - (5/36)*c*x**(-11/6)
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1591,26 +1593,25 @@ def anth_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_anth          =   KeqFuncs['anth'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_anth          =   KeqFuncs['anth'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - 2*(7/8)**(8/15)*K_anth**7*K_bica*x_CO2g**(29/15)
-    d               =   - K_bica**2 * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - 2*(7/8)**(8/15)*K_anth**7*K_bica*x_CO2g**(29/15)
+    d_vals               =   - K_bica**2 * x_CO2g**2
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2 + c * x**(1/15) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x + (1/15) * c * x**(-14/15)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b - (14/225) * c * x**(-29/15) 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000)#, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1661,26 +1662,25 @@ def grun_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_grun          =   KeqFuncs['grun'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_grun          =   KeqFuncs['grun'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb
-    b               =   K_wate + K_bica * x_CO2g
-    c               =   - 2*(7/8)**(8/15)*K_grun**7*K_bica*x_CO2g**(29/15)
-    d               =   - K_bica**2 * x_CO2g**2
-    def f(x):
+    a_vals               =   2 * K_carb
+    b_vals               =   K_wate + K_bica * x_CO2g
+    c_vals               =   - 2*(7/8)**(8/15)*K_grun**7*K_bica*x_CO2g**(29/15)
+    d_vals               =   - K_bica**2 * x_CO2g**2
+    def f(x, a, b, c, d):
         return a * x**3 + b * x**2 + c * x**(1/15) + d
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 3 * a * x**2 + 2 * b * x + (1/15) * c * x**(-14/15)
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 6 * a * x + 2 * b - (14/225) * c * x**(-29/15) 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000)#, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1733,32 +1733,31 @@ def basa_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_woll          =   KeqFuncs['woll'](Temp,Pres).T[None,:,:]
-    K_enst          =   KeqFuncs['enst'](Temp,Pres).T[None,:,:]
-    K_ferr          =   KeqFuncs['ferr'](Temp,Pres).T[None,:,:]
-    K_anor          =   KeqFuncs['anor'](Temp,Pres).T[None,:,:]
-    K_albi          =   KeqFuncs['albi'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_woll          =   KeqFuncs['woll'](Temp,Pres)
+    K_enst          =   KeqFuncs['enst'](Temp,Pres)
+    K_ferr          =   KeqFuncs['ferr'](Temp,Pres)
+    K_anor          =   KeqFuncs['anor'](Temp,Pres)
+    K_albi          =   KeqFuncs['albi'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_woll**2 * K_carb
-    b               =   K_woll**2 * K_wate + K_woll**2 * K_bica * x_CO2g
-    c               =   - x_CO2g**2 * (K_woll**2 * K_bica**2 \
+    a_vals               =   2 * K_woll**2 * K_carb
+    b_vals               =   K_woll**2 * K_wate + K_woll**2 * K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * (K_woll**2 * K_bica**2 \
                                            + K_anor**4 * K_bica * K_albi)
-    d               =   - x_CO2g**3 * 2 * K_woll * K_anor**2 * \
+    d_vals               =   - x_CO2g**3 * 2 * K_woll * K_anor**2 * \
                                             K_bica * (K_woll + K_enst + K_ferr)
-    def f(x):
+    def f(x, a, b, c, d):
         return x**4 + b/a * x**3 + c/a * x + d/a
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * x**3 + 3 * b/a * x**2 + c/a
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * x**2 + 6 * b/a * x
-    x  = 10000 * x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = 10000 * x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1811,32 +1810,31 @@ def bash_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
 
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_woll          =   KeqFuncs['woll'](Temp,Pres).T[None,:,:]
-    K_enst          =   KeqFuncs['enst'](Temp,Pres).T[None,:,:]
-    K_ferr          =   KeqFuncs['ferr'](Temp,Pres).T[None,:,:]
-    K_anor          =   KeqFuncs['anoh'](Temp,Pres).T[None,:,:]
-    K_albi          =   KeqFuncs['albh'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_woll          =   KeqFuncs['woll'](Temp,Pres)
+    K_enst          =   KeqFuncs['enst'](Temp,Pres)
+    K_ferr          =   KeqFuncs['ferr'](Temp,Pres)
+    K_anor          =   KeqFuncs['anoh'](Temp,Pres)
+    K_albi          =   KeqFuncs['albh'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_woll**2 * K_carb
-    b               =   K_woll**2 * K_wate + K_woll**2 * K_bica * x_CO2g
-    c               =   - x_CO2g**2 * (K_woll**2 * K_bica**2 \
+    a_vals               =   2 * K_woll**2 * K_carb
+    b_vals               =   K_woll**2 * K_wate + K_woll**2 * K_bica * x_CO2g
+    c_vals               =   - x_CO2g**2 * (K_woll**2 * K_bica**2 \
                                            + K_anor**4 * K_bica * K_albi)
-    d               =   - x_CO2g**3 * 2 * K_woll * K_anor**2 * \
+    d_vals               =   - x_CO2g**3 * 2 * K_woll * K_anor**2 * \
                                             K_bica * (K_woll + K_enst + K_ferr)
-    def f(x):
+    def f(x, a, b, c, d):
         return x**4 + b/a * x**3 + c/a * x + d/a
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * x**3 + 3 * b/a * x**2 + c/a
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * x**2 + 6 * b/a * x
-    x  = 10000 * x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = 10000 * x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1889,30 +1887,29 @@ def peri_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
     
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_woll          =   KeqFuncs['woll'](Temp,Pres).T[None,:,:]
-    K_enst          =   KeqFuncs['enst'](Temp,Pres).T[None,:,:]
-    K_fors          =   KeqFuncs['fors'](Temp,Pres).T[None,:,:]
-    K_faya          =   KeqFuncs['faya'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_woll          =   KeqFuncs['woll'](Temp,Pres)
+    K_enst          =   KeqFuncs['enst'](Temp,Pres)
+    K_fors          =   KeqFuncs['fors'](Temp,Pres)
+    K_faya          =   KeqFuncs['faya'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_enst**2 * K_carb
-    b               =   K_enst**2 * ( K_wate +  K_bica * x_CO2g )
-    c               =   - x_CO2g**2 * K_enst**2 * K_bica**2 
-    d               =   -2*K_fors*K_bica*(K_fors*K_enst + K_faya*K_enst +\
+    a_vals               =   2 * K_enst**2 * K_carb
+    b_vals               =   K_enst**2 * ( K_wate +  K_bica * x_CO2g )
+    c_vals               =   - x_CO2g**2 * K_enst**2 * K_bica**2 
+    d_vals               =   -2*K_fors*K_bica*(K_fors*K_enst + K_faya*K_enst +\
                                          K_woll*K_fors)*x_CO2g**3 
-    def f(x):
+    def f(x, a, b, c, d):
         return x**4 + b/a * x**3 + c/a * x + d/a 
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * x**3 + 3 * b/a * x**2 + c/a
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * x**2 + 6 * b/a * x 
-    x  = x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -1965,32 +1962,31 @@ def gran_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
     
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_albi          =   KeqFuncs['albi'](Temp,Pres).T[None,:,:]
-    K_kfel          =   KeqFuncs['kfel'](Temp,Pres).T[None,:,:]
-    K_phlo          =   KeqFuncs['phlo'](Temp,Pres).T[None,:,:]
-    K_anni          =   KeqFuncs['anni'](Temp,Pres).T[None,:,:]
-    K_quar          =   KeqFuncs['quar'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_albi          =   KeqFuncs['albi'](Temp,Pres)
+    K_kfel          =   KeqFuncs['kfel'](Temp,Pres)
+    K_phlo          =   KeqFuncs['phlo'](Temp,Pres)
+    K_anni          =   KeqFuncs['anni'](Temp,Pres)
+    K_quar          =   KeqFuncs['quar'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb * K_quar**2 * K_kfel**(1/3)
-    b               =   K_quar**2 * K_kfel**(1/3) *(K_wate + K_bica*x_CO2g)
-    c               =   -  K_bica * K_kfel**(1/3) * (K_bica * K_quar**2 \
+    a_vals               =   2 * K_carb * K_quar**2 * K_kfel**(1/3)
+    b_vals               =   K_quar**2 * K_kfel**(1/3) *(K_wate + K_bica*x_CO2g)
+    c_vals               =   -  K_bica * K_kfel**(1/3) * (K_bica * K_quar**2 \
                                             + (K_kfel + K_albi))*x_CO2g**2 
-    d               =   - 2 * K_bica * K_quar**2 \
+    d_vals               =   - 2 * K_bica * K_quar**2 \
                         * (K_phlo + K_anni) * x_CO2g**3 
-    def f(x):
+    def f(x, a, b, c, d):
         return x**4 + b/a * x**3 + c/a * x + d/a
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * x**3 + 3 * b/a * x**2 + c/a
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * x**2 + 6 * b/a * x
-    x  = 10 * x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = 10 * x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m
@@ -2043,32 +2039,31 @@ def grah_eq(x_CO2g, Temp, Pres, KeqFuncs):
         
     '''
     
-    Temp = Temp[0, :, 0]
-    Pres = Pres[0, 0, :]
-    K_albi          =   KeqFuncs['albh'](Temp,Pres).T[None,:,:]
-    K_kfel          =   KeqFuncs['kfeh'](Temp,Pres).T[None,:,:]
-    K_phlo          =   KeqFuncs['phlh'](Temp,Pres).T[None,:,:]
-    K_anni          =   KeqFuncs['annh'](Temp,Pres).T[None,:,:]
-    K_quar          =   KeqFuncs['quar'](Temp,Pres).T[None,:,:]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,:,:]
-    K_wate          =   KeqFuncs['wate'](Temp,Pres).T[None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,:,:]
+
+    K_albi          =   KeqFuncs['albh'](Temp,Pres)
+    K_kfel          =   KeqFuncs['kfeh'](Temp,Pres)
+    K_phlo          =   KeqFuncs['phlh'](Temp,Pres)
+    K_anni          =   KeqFuncs['annh'](Temp,Pres)
+    K_quar          =   KeqFuncs['quar'](Temp,Pres)
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_wate          =   KeqFuncs['wate'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
-    a               =   2 * K_carb * K_quar**2 * K_kfel**(1/3)
-    b               =   K_quar**2 * K_kfel**(1/3) *(K_wate + K_bica*x_CO2g)
-    c               =   -  K_bica * K_kfel**(1/3) * (K_bica * K_quar**2 \
+    a_vals               =   2 * K_carb * K_quar**2 * K_kfel**(1/3)
+    b_vals               =   K_quar**2 * K_kfel**(1/3) *(K_wate + K_bica*x_CO2g)
+    c_vals               =   -  K_bica * K_kfel**(1/3) * (K_bica * K_quar**2 \
                                             + (K_kfel + K_albi))*x_CO2g**2 
-    d               =   - 2 * K_bica * K_quar**2 \
+    d_vals               =   - 2 * K_bica * K_quar**2 \
                         * (K_phlo + K_anni) * x_CO2g**3 
-    def f(x):
+    def f(x, a, b, c, d):
         return x**4 + b/a * x**3 + c/a * x + d/a
-    def f1(x):
+    def f1(x, a, b, c, d):
         return 4 * x**3 + 3 * b/a * x**2 + c/a
-    def f2(x):
+    def f2(x, a, b, c, d):
         return 12 * x**2 + 6 * b/a * x
-    x  = 10 * x_CO2g**(1/2)
-    x0 = newton(f, x, fprime=f1, args=(), tol=1e-6, maxiter=1000, fprime2=f2)
+    x_init  = 10 * x_CO2g**(1/2)
+    x0 = newton(f, x_init, fprime=f1, fprime2=f2, args=(a_vals, b_vals, c_vals, d_vals))
     act_HCO3_m      = x0
     act_CO3_mm      = K_carb / K_bica * act_HCO3_m**2 / x_CO2g
     alk             = 2 * act_CO3_mm + act_HCO3_m

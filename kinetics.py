@@ -126,7 +126,7 @@ def get_keff(Temp, pHall, logkDict):
         # Ellipsis notation is equivalent to doing :, :, : (and so on)
         k_eff[i, ...] = func(Temp, pHall, logkDict)
 
-        kFuncs[names[i]] = interpnd(points=points, values=k_eff[i])
+        kFuncs[names[i]] = lambda T, pH, f=func: f(T, pH, logkDict).value
         
     return kFuncs
 

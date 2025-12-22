@@ -114,11 +114,11 @@ def DIC_tr(act_HCO3_m, x_CO2g, Temp, Pres, KeqFuncs):
 
     '''
     
-    Temp = Temp[0, 0, :, 0]
-    Pres = Pres[0, 0, 0, :]
-    K_bica          =   KeqFuncs['bica'](Temp,Pres).T[None,None,:,:]
-    K_carb          =   KeqFuncs['carb'](Temp,Pres).T[None,None,:,:]
-    K_co2a          =   KeqFuncs['co2a'](Temp,Pres).T[None,None,:,:]
+    # Temp = Temp[0, 0, :, 0]
+    # Pres = Pres[0, 0, 0, :]
+    K_bica          =   KeqFuncs['bica'](Temp,Pres)
+    K_carb          =   KeqFuncs['carb'](Temp,Pres)
+    K_co2a          =   KeqFuncs['co2a'](Temp,Pres)
     act_CO2_aq      =   x_CO2g * K_co2a
     act_H_p         =   K_bica * x_CO2g  / act_HCO3_m
     pH              =   - np.log10(act_H_p)
@@ -377,7 +377,8 @@ def get_Dw(x_CO2g, Temp, Pres, Length, tsoil, DICeqFuncs, kFuncs):
         
         HCO3  = DICeqFuncs[name]['HCO3'](np.transpose(np.array([x_CO2g_3, Temp_3, Pres_3]),(1,2,3,0)))
         ph   = DICeqFuncs[name]['pH'] (np.transpose(np.array([x_CO2g_3, Temp_3, Pres_3]),(1,2,3,0)))
-        k_min = kFuncs[name](np.transpose(np.array([Temp_3, ph]),(1,2,3,0)))
+        # k_min = kFuncs[name](np.transpose(np.array([Temp_3, ph]),(1,2,3,0)))
+        k_min = kFuncs[name](Temp_3, ph)
         data = Dw(C_eq=HCO3[..., None, None], keff=k_min[..., None, None], L=Length, t_soil=tsoil)
 
         DwFuncs[name] = interpnd(points=points, values=data)
@@ -389,7 +390,8 @@ def get_Dw(x_CO2g, Temp, Pres, Length, tsoil, DICeqFuncs, kFuncs):
         ph   = DICeqFuncs[name]['pH'] (np.transpose(np.array([x_CO2g_3, Temp_3, Pres_3]),(1,2,3,0)))
         k_min = 1e10 + np.zeros_like(x_CO2g_3)
         for mine in comp_names[name]:
-            k_min = np.minimum(k_min,kFuncs[mine](np.transpose(np.array([Temp_3, ph]),(1,2,3,0))))
+            # k_min = np.minimum(k_min,kFuncs[mine](np.transpose(np.array([Temp_3, ph]),(1,2,3,0))))
+            k_min = np.minimum(k_min, kFuncs[mine](Temp_3, ph))
         data = Dw(C_eq=HCO3[..., None, None], keff=k_min[..., None, None], L=Length, t_soil=tsoil)
 
         DwFuncs[name] = interpnd(points=points, values=data)

@@ -38,10 +38,8 @@ from scipy.interpolate import RegularGridInterpolator as interpnd
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-rc('font', family='serif')
-rc('font', serif='Helvetica')
 rc('font', size='16')
-rc('text', usetex='True')
+rc('text', usetex=False)
 
 from parameters import *
 import kinetics    as ki
@@ -90,7 +88,7 @@ basa1, basa2 = eq.fit_powerlaw(xCO2,HCO3eq_basa)
 peri1, peri2 = eq.fit_powerlaw(xCO2,HCO3eq_peri)
 gran1, gran2 = eq.fit_powerlaw(xCO2,HCO3eq_gran)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,5),tight_layout=True)
+fig1 = plt.figure(figsize=(5,5))
 spec1 = gridspec.GridSpec(ncols=1, nrows=1, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])

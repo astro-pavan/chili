@@ -38,10 +38,8 @@ from scipy.interpolate import RegularGridInterpolator as interpnd
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-rc('font', family='serif')
-rc('font', serif='Helvetica')
 rc('font', size='16')
-rc('text', usetex='True')
+rc('text', usetex=False)
 
 from parameters import *
 import kinetics    as ki
@@ -71,7 +69,7 @@ print(np.round(time.time() - start),'s, Transport calculations complete.')
 
 # %%
 # Fig. 3: Plot equilibrium HCO3- vs xCO2 for peri
-fig1 = plt.figure(constrained_layout=False,figsize=(6,10),tight_layout=True)
+fig1 = plt.figure(figsize=(6,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -149,7 +147,7 @@ plt.savefig('CAeq_peri.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. 4: Plot generalized HCO3- vs xCO2 for peri
 
-fig1 = plt.figure(constrained_layout=False,figsize=(6,10),tight_layout=True)
+fig1 = plt.figure(figsize=(6,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -287,7 +285,7 @@ w_gran_HCO3eq0 = tr.w_flux(DICeqFuncs['grah']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_peri_HCO3eq0,w_basa_HCO3eq0,w_gran_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -391,7 +389,7 @@ w_gran_HCO3eq0 = tr.w_flux(DICeqFuncs['gran']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_peri_HCO3eq0,w_basa_HCO3eq0,w_gran_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -494,7 +492,7 @@ w_kfel_HCO3eq0 = tr.w_flux(DICeqFuncs['kfeh']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_albi_HCO3eq0,w_anor_HCO3eq0,w_kfel_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -597,7 +595,7 @@ w_kfel_HCO3eq0 = tr.w_flux(DICeqFuncs['kfel']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_albi_HCO3eq0,w_anor_HCO3eq0,w_kfel_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -700,7 +698,7 @@ w_anni_HCO3eq0 = tr.w_flux(DICeqFuncs['annh']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_phlo_HCO3eq0,w_musc_HCO3eq0,w_anni_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -803,7 +801,7 @@ w_anni_HCO3eq0 = tr.w_flux(DICeqFuncs['anni']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_phlo_HCO3eq0,w_musc_HCO3eq0,w_anni_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -906,7 +904,7 @@ w_ferr_HCO3eq0 = tr.w_flux(DICeqFuncs['ferr']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_enst_HCO3eq0,w_woll_HCO3eq0,w_ferr_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -1002,7 +1000,7 @@ w_faya_HCO3eq0 = tr.w_flux(DICeqFuncs['faya']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_faya_HCO3eq0,w_fors_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -1094,7 +1092,7 @@ w_grun_HCO3eq0 = tr.w_flux(DICeqFuncs['grun']['HCO3']([xCO2g0,T288,P0]),qc)
 
 # print(w_grun_HCO3eq0,w_anth_HCO3eq0)
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -1156,7 +1154,7 @@ plt.savefig('w_amph_therm.pdf',format='pdf',bbox_inches='tight')
 
 xCO2g1 = 0.1
 
-fig1 = plt.figure(constrained_layout=False,figsize=(10,10),tight_layout=True)
+fig1 = plt.figure(figsize=(10,10))
 spec1 = gridspec.GridSpec(ncols=2, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -1183,11 +1181,13 @@ argxCO2   = np.array([xclim,T_clim,P0*np.ones(len(xclim))]).T
 DICeq  = DICeqFuncs['peri']['ALK'] (argxCO2)
 HCO3eq = DICeqFuncs['peri']['HCO3'](argxCO2)
 
+pH = DICeqFuncs['peri']['pH'](argxCO2)
+
 knet_peri = np.array([
-    kFuncs['woll'](np.array([T_clim,DICeqFuncs['peri']['pH'](argxCO2)]).T),\
-    kFuncs['enst'](np.array([T_clim,DICeqFuncs['peri']['pH'](argxCO2)]).T),\
-    kFuncs['faya'](np.array([T_clim,DICeqFuncs['peri']['pH'](argxCO2)]).T),\
-    kFuncs['fors'](np.array([T_clim,DICeqFuncs['peri']['pH'](argxCO2)]).T)]).min(axis=0)
+    kFuncs['woll'](T_clim, pH),\
+    kFuncs['enst'](T_clim, pH),\
+    kFuncs['faya'](T_clim, pH),\
+    kFuncs['fors'](T_clim, pH)]).min(axis=0)
 
 argxCO2ki = np.array([xclim,T_clim,P0*np.ones(len(xclim)),\
                      Lc*np.ones(len(xclim)),0*np.ones(len(xclim))]).T
@@ -1212,11 +1212,13 @@ argxCO2b   = np.array([xclim,T288*np.ones(len(xclim)),P0*np.ones(len(xclim))]).T
 DICbeq  = DICeqFuncs['peri']['ALK'] (argxCO2b)
 HCO3beq = DICeqFuncs['peri']['HCO3'](argxCO2b)
 
+pH = DICeqFuncs['peri']['pH'](argxCO2b)
+
 knet_peri = np.array([
-    kFuncs['woll'](np.array([T288*np.ones(len(xclim)),DICeqFuncs['peri']['pH'](argxCO2b)]).T),\
-    kFuncs['enst'](np.array([T288*np.ones(len(xclim)),DICeqFuncs['peri']['pH'](argxCO2b)]).T),\
-    kFuncs['faya'](np.array([T288*np.ones(len(xclim)),DICeqFuncs['peri']['pH'](argxCO2b)]).T),\
-    kFuncs['fors'](np.array([T288*np.ones(len(xclim)),DICeqFuncs['peri']['pH'](argxCO2b)]).T)]).min(axis=0)
+    kFuncs['woll'](T288*np.ones(len(xclim)),pH),\
+    kFuncs['enst'](T288*np.ones(len(xclim)),pH),\
+    kFuncs['faya'](T288*np.ones(len(xclim)),pH),\
+    kFuncs['fors'](T288*np.ones(len(xclim)),pH)]).min(axis=0)
 
 argxCO2bki = np.array([xclim,T288*np.ones(len(xclim)),P0*np.ones(len(xclim)),\
                      Lc*np.ones(len(xclim)),0*np.ones(len(xclim))]).T
@@ -1549,7 +1551,7 @@ j_batuc = np.where((Qcont < DwFuncs['bash'](argxCO2cu)) == True)[0][0]
 j_baqls = np.where((Qseal > DwFuncs['bash'](argxCO2ss)) == True)[0][0]
 j_grans = np.where((Qseaf > DwFuncs['grah'](argxCO2ss)) == True)[0][0]
 
-fig2 = plt.figure(constrained_layout=False,figsize=(10,10),tight_layout=True)
+fig2 = plt.figure(figsize=(10,10))
 spec2 = gridspec.GridSpec(ncols=2, nrows=2, figure=fig2)
 p21 = fig2.add_subplot(spec2[0,0])
 p22 = fig2.add_subplot(spec2[0,1])
@@ -1704,7 +1706,7 @@ plt.savefig('w_xCO2_endmembers.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. 8: Plot w vs xCO2 and q for rocks
 
-fig1 = plt.figure(constrained_layout=False,figsize=(10,5),tight_layout=True)
+fig1 = plt.figure(figsize=(10,5))
 spec1 = gridspec.GridSpec(ncols=2, nrows=1, figure=fig1)
 
 p12  = fig1.add_subplot(spec1[0,0])
@@ -1998,7 +2000,7 @@ i_granT = np.where((DwFuncs['grah'](argT1) > tr.q_contT(Temp=T,epsi=0.03)) == Tr
 # i_gran0 = np.where((wT_gran0_DICeq < 2 * wT_gran0_DICki) == True)[0][0]
 # i_granT = np.where((wT_granT_DICeq < 2 * wT_granT_DICki) == True)[0][0]
 
-fig1 = plt.figure(constrained_layout=False,figsize=(5,10),tight_layout=True)
+fig1 = plt.figure(figsize=(5,10))
 spec1 = gridspec.GridSpec(ncols=1, nrows=2, figure=fig1)
 
 p11  = fig1.add_subplot(spec1[0,0])
@@ -2207,7 +2209,7 @@ se_hco2 = sea_area*tr.w_flux(DICtrFuncs['HCO3'](argDICtr_basa2),Qseaf)
 i_co = np.where((co_hcom > 2 * co_hco2) == True)[0][0]
 # i_se = np.where((se_hcom > 2 * se_hco2) == True)[0][0]
 
-fig8 = plt.figure(constrained_layout=False,figsize=(10,10),tight_layout=True)
+fig8 = plt.figure(figsize=(10,10))
 spec8 = gridspec.GridSpec(ncols=2, nrows=2, figure=fig8)
 p81 = fig8.add_subplot(spec8[0,0])
 p82 = fig8.add_subplot(spec8[0,1])
@@ -2309,7 +2311,7 @@ plt.savefig('earth_weath.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. A1: Plot Keq
 
-figB = plt.figure(constrained_layout=False,figsize=(11,10),tight_layout=True)
+figB = plt.figure(figsize=(11,10))
 specB = gridspec.GridSpec(ncols=2, nrows=2, figure=figB)
 pB2 = figB.add_subplot(specB[0,0])
 pB1 = figB.add_subplot(specB[0,1])
@@ -2319,24 +2321,24 @@ pB1.text(-0.1, 1.15, '(b)', transform=pB1.transAxes,fontsize=16, fontweight='bol
 pB1.text(0.9, 0.94, '$T = 278$ K', transform=pB1.transAxes, va='top', ha='right')
 pB2.text(0.9, 0.94, '$P = 1$ bar', transform=pB2.transAxes, va='top', ha='right')
 
-lB11,   =   pB1.plot(P,KeqFuncs['anoh'](T278,P),lw=wid_mine,c=col_anor,ls=lwi_mine)
-lB12,   =   pB1.plot(P,KeqFuncs['fors'](T278,P),lw=wid_mine,c=col_fors,ls=lwi_mine)
-lB13,   =   pB1.plot(P,KeqFuncs['woll'](T278,P),lw=wid_mine,c=col_woll,ls=lwi_mine)
-lB14,   =   pB1.plot(P,KeqFuncs['co2a'](T278,P),lw=wid_mine,c=col_co2a,ls=lwi_mine)
-lB15,   =   pB1.plot(P,KeqFuncs['enst'](T278,P),lw=wid_mine,c=col_enst,ls=lwi_mine)
-lB16,   =   pB1.plot(P,KeqFuncs['mush'](T278,P),lw=wid_mine,c=col_musc,ls=lwi_mine)
-lB18,   =   pB1.plot(P,KeqFuncs['anth'](T278,P),lw=wid_mine,c=col_anth,ls=lwi_mine)
-lB17,   =   pB1.plot(P,KeqFuncs['quar'](T278,P),lw=wid_mine,c=col_quar,ls=lwi_mine)
-lB19,   =   pB1.plot(P,KeqFuncs['faya'](T278,P),lw=wid_mine,c=col_faya,ls=lwi_mine)
-lB110,  =   pB1.plot(P,KeqFuncs['phlh'](T278,P),lw=wid_mine,c=col_phlo,ls=lwi_mine)
-lB111,  =   pB1.plot(P,KeqFuncs['ferr'](T278,P),lw=wid_mine,c=col_ferr,ls=lwi_mine)
-lB112,  =   pB1.plot(P,KeqFuncs['bica'](T278,P),lw=wid_mine,c=col_bica,ls=lwi_mine)
-lB113,  =   pB1.plot(P,KeqFuncs['annh'](T278,P),lw=wid_mine,c=col_anni,ls=lwi_mine)
-lB114,  =   pB1.plot(P,KeqFuncs['grun'](T278,P),lw=wid_mine,c=col_grun,ls=lwi_mine)
-lB115,  =   pB1.plot(P,KeqFuncs['albh'](T278,P),lw=wid_mine,c=col_albi,ls=lwi_mine)
-lB116,  =   pB1.plot(P,KeqFuncs['carb'](T278,P),lw=wid_mine,c=col_carb,ls=lwi_mine)
-lB117,  =   pB1.plot(P,KeqFuncs['kfeh'](T278,P),lw=wid_mine,c=col_kfel,ls=lwi_mine)
-lB118,  =   pB1.plot(P,KeqFuncs['wate'](T278,P),lw=wid_mine,c=col_wate,ls=lwi_mine)
+lB11,   =   pB1.plot(P,KeqFuncs['anoh'](np.full_like(P, T278),P),lw=wid_mine,c=col_anor,ls=lwi_mine)
+lB12,   =   pB1.plot(P,KeqFuncs['fors'](np.full_like(P, T278),P),lw=wid_mine,c=col_fors,ls=lwi_mine)
+lB13,   =   pB1.plot(P,KeqFuncs['woll'](np.full_like(P, T278),P),lw=wid_mine,c=col_woll,ls=lwi_mine)
+lB14,   =   pB1.plot(P,KeqFuncs['co2a'](np.full_like(P, T278),P),lw=wid_mine,c=col_co2a,ls=lwi_mine)
+lB15,   =   pB1.plot(P,KeqFuncs['enst'](np.full_like(P, T278),P),lw=wid_mine,c=col_enst,ls=lwi_mine)
+lB16,   =   pB1.plot(P,KeqFuncs['mush'](np.full_like(P, T278),P),lw=wid_mine,c=col_musc,ls=lwi_mine)
+lB18,   =   pB1.plot(P,KeqFuncs['anth'](np.full_like(P, T278),P),lw=wid_mine,c=col_anth,ls=lwi_mine)
+lB17,   =   pB1.plot(P,KeqFuncs['quar'](np.full_like(P, T278),P),lw=wid_mine,c=col_quar,ls=lwi_mine)
+lB19,   =   pB1.plot(P,KeqFuncs['faya'](np.full_like(P, T278),P),lw=wid_mine,c=col_faya,ls=lwi_mine)
+lB110,  =   pB1.plot(P,KeqFuncs['phlh'](np.full_like(P, T278),P),lw=wid_mine,c=col_phlo,ls=lwi_mine)
+lB111,  =   pB1.plot(P,KeqFuncs['ferr'](np.full_like(P, T278),P),lw=wid_mine,c=col_ferr,ls=lwi_mine)
+lB112,  =   pB1.plot(P,KeqFuncs['bica'](np.full_like(P, T278),P),lw=wid_mine,c=col_bica,ls=lwi_mine)
+lB113,  =   pB1.plot(P,KeqFuncs['annh'](np.full_like(P, T278),P),lw=wid_mine,c=col_anni,ls=lwi_mine)
+lB114,  =   pB1.plot(P,KeqFuncs['grun'](np.full_like(P, T278),P),lw=wid_mine,c=col_grun,ls=lwi_mine)
+lB115,  =   pB1.plot(P,KeqFuncs['albh'](np.full_like(P, T278),P),lw=wid_mine,c=col_albi,ls=lwi_mine)
+lB116,  =   pB1.plot(P,KeqFuncs['carb'](np.full_like(P, T278),P),lw=wid_mine,c=col_carb,ls=lwi_mine)
+lB117,  =   pB1.plot(P,KeqFuncs['kfeh'](np.full_like(P, T278),P),lw=wid_mine,c=col_kfel,ls=lwi_mine)
+lB118,  =   pB1.plot(P,KeqFuncs['wate'](np.full_like(P, T278),P),lw=wid_mine,c=col_wate,ls=lwi_mine)
 pB1.set_xscale('log')
 pB1.set_yscale('log')
 pB1.set_ylim([1e-15,1e2])
@@ -2344,24 +2346,24 @@ pB1.set_xlabel('$P$ [bar]',fontsize=20)
 pB1.set_ylabel('$K$',fontsize=20)
 pB1.set_xticks(np.logspace(-2,3,num=6))
 
-lB21,   =   pB2.plot(T,KeqFuncs['anoh'](T,P0),lw=wid_mine,c=col_anor,ls=lwi_mine)
-lB22,   =   pB2.plot(T,KeqFuncs['fors'](T,P0),lw=wid_mine,c=col_fors,ls=lwi_mine)
-lB23,   =   pB2.plot(T,KeqFuncs['woll'](T,P0),lw=wid_mine,c=col_woll,ls=lwi_mine)
-lB24,   =   pB2.plot(T,KeqFuncs['co2a'](T,P0),lw=wid_mine,c=col_co2a,ls=lwi_mine)
-lB25,   =   pB2.plot(T,KeqFuncs['enst'](T,P0),lw=wid_mine,c=col_enst,ls=lwi_mine)
-lB26,   =   pB2.plot(T,KeqFuncs['mush'](T,P0),lw=wid_mine,c=col_musc,ls=lwi_mine)
-lB28,   =   pB2.plot(T,KeqFuncs['anth'](T,P0),lw=wid_mine,c=col_anth,ls=lwi_mine)
-lB27,   =   pB2.plot(T,KeqFuncs['quar'](T,P0),lw=wid_mine,c=col_quar,ls=lwi_mine)
-lB29,   =   pB2.plot(T,KeqFuncs['faya'](T,P0),lw=wid_mine,c=col_faya,ls=lwi_mine)
-lB210,  =   pB2.plot(T,KeqFuncs['phlh'](T,P0),lw=wid_mine,c=col_phlo,ls=lwi_mine)
-lB211,  =   pB2.plot(T,KeqFuncs['ferr'](T,P0),lw=wid_mine,c=col_ferr,ls=lwi_mine)
-lB212,  =   pB2.plot(T,KeqFuncs['bica'](T,P0),lw=wid_mine,c=col_bica,ls=lwi_mine)
-lB213,  =   pB2.plot(T,KeqFuncs['annh'](T,P0),lw=wid_mine,c=col_anni,ls=lwi_mine)
-lB214,  =   pB2.plot(T,KeqFuncs['grun'](T,P0),lw=wid_mine,c=col_grun,ls=lwi_mine)
-lB215,  =   pB2.plot(T,KeqFuncs['albh'](T,P0),lw=wid_mine,c=col_albi,ls=lwi_mine)
-lB216,  =   pB2.plot(T,KeqFuncs['carb'](T,P0),lw=wid_mine,c=col_carb,ls=lwi_mine)
-lB217,  =   pB2.plot(T,KeqFuncs['kfeh'](T,P0),lw=wid_mine,c=col_kfel,ls=lwi_mine)
-lB218,  =   pB2.plot(T,KeqFuncs['wate'](T,P0),lw=wid_mine,c=col_wate,ls=lwi_mine)
+lB21,   =   pB2.plot(T,KeqFuncs['anoh'](T,np.full_like(T,P0)),lw=wid_mine,c=col_anor,ls=lwi_mine)
+lB22,   =   pB2.plot(T,KeqFuncs['fors'](T,np.full_like(T,P0)),lw=wid_mine,c=col_fors,ls=lwi_mine)
+lB23,   =   pB2.plot(T,KeqFuncs['woll'](T,np.full_like(T,P0)),lw=wid_mine,c=col_woll,ls=lwi_mine)
+lB24,   =   pB2.plot(T,KeqFuncs['co2a'](T,np.full_like(T,P0)),lw=wid_mine,c=col_co2a,ls=lwi_mine)
+lB25,   =   pB2.plot(T,KeqFuncs['enst'](T,np.full_like(T,P0)),lw=wid_mine,c=col_enst,ls=lwi_mine)
+lB26,   =   pB2.plot(T,KeqFuncs['mush'](T,np.full_like(T,P0)),lw=wid_mine,c=col_musc,ls=lwi_mine)
+lB28,   =   pB2.plot(T,KeqFuncs['anth'](T,np.full_like(T,P0)),lw=wid_mine,c=col_anth,ls=lwi_mine)
+lB27,   =   pB2.plot(T,KeqFuncs['quar'](T,np.full_like(T,P0)),lw=wid_mine,c=col_quar,ls=lwi_mine)
+lB29,   =   pB2.plot(T,KeqFuncs['faya'](T,np.full_like(T,P0)),lw=wid_mine,c=col_faya,ls=lwi_mine)
+lB210,  =   pB2.plot(T,KeqFuncs['phlh'](T,np.full_like(T,P0)),lw=wid_mine,c=col_phlo,ls=lwi_mine)
+lB211,  =   pB2.plot(T,KeqFuncs['ferr'](T,np.full_like(T,P0)),lw=wid_mine,c=col_ferr,ls=lwi_mine)
+lB212,  =   pB2.plot(T,KeqFuncs['bica'](T,np.full_like(T,P0)),lw=wid_mine,c=col_bica,ls=lwi_mine)
+lB213,  =   pB2.plot(T,KeqFuncs['annh'](T,np.full_like(T,P0)),lw=wid_mine,c=col_anni,ls=lwi_mine)
+lB214,  =   pB2.plot(T,KeqFuncs['grun'](T,np.full_like(T,P0)),lw=wid_mine,c=col_grun,ls=lwi_mine)
+lB215,  =   pB2.plot(T,KeqFuncs['albh'](T,np.full_like(T,P0)),lw=wid_mine,c=col_albi,ls=lwi_mine)
+lB216,  =   pB2.plot(T,KeqFuncs['carb'](T,np.full_like(T,P0)),lw=wid_mine,c=col_carb,ls=lwi_mine)
+lB217,  =   pB2.plot(T,KeqFuncs['kfeh'](T,np.full_like(T,P0)),lw=wid_mine,c=col_kfel,ls=lwi_mine)
+lB218,  =   pB2.plot(T,KeqFuncs['wate'](T,np.full_like(T,P0)),lw=wid_mine,c=col_wate,ls=lwi_mine)
 #pB2.set_xscale('log')
 pB2.set_yscale('log')
 pB2.set_ylim([1e-15,1e2])
@@ -2387,7 +2389,7 @@ plt.savefig('K.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. A2: Plot k_eff
 
-figA = plt.figure(constrained_layout=False,figsize=(11,15),tight_layout=True)
+figA = plt.figure(figsize=(11,15))
 specA = gridspec.GridSpec(ncols=2, nrows=3, figure=figA)
 pA2 = figA.add_subplot(specA[0,0])
 pA1 = figA.add_subplot(specA[0,1])
@@ -2403,22 +2405,22 @@ pA1.text(0.55, 0.95, '$T$ = 288 K', transform=pA1.transAxes, va='top', ha='right
 pA4.text(0.55, 0.95, 'pH = 10', transform=pA4.transAxes,va='top', ha='right')
 pA3.text(0.55, 0.95, '$T$ = 348 K', transform=pA3.transAxes,va='top', ha='right')
 
-argpH = np.array(np.meshgrid(T288,pHfull)).T[0]
+argpH = T, np.full_like(T, 7)
 argTk = np.array(np.meshgrid(T,7)).T[:,0]
 argpH2 = np.array(np.meshgrid(348,pHfull)).T[0]
 argTk2 = np.array(np.meshgrid(T,10)).T[:,0]
 
-lA11,   =   pA1.plot(pHfull,kFuncs['woll'](argpH),lw=wid_mine,c=col_woll,ls=lwi_mine)
-lA12,   =   pA1.plot(pHfull,kFuncs['anor'](argpH),lw=wid_mine,c=col_anor,ls=lwi_mine)
-lA13,   =   pA1.plot(pHfull,kFuncs['fors'](argpH),lw=wid_mine,c=col_fors,ls=lwi_mine)
-lA14,   =   pA1.plot(pHfull,kFuncs['faya'](argpH),lw=wid_mine,c=col_faya,ls=lwi_mine)
-lA15,   =   pA1.plot(pHfull,kFuncs['albi'](argpH),lw=wid_mine,c=col_albi,ls=lwi_mine)
-lA16,   =   pA1.plot(pHfull,kFuncs['quar'](argpH),lw=wid_mine,c=col_quar,ls=lwi_mine)
-lA17,   =   pA1.plot(pHfull,kFuncs['enst'](argpH),lw=wid_mine,c=col_enst,ls=lwi_mine)
-lA18,   =   pA1.plot(pHfull,kFuncs['phlo'](argpH),lw=wid_mine,c=col_phlo,ls=lwi_mine)
-lA19,   =   pA1.plot(pHfull,kFuncs['kfel'](argpH),lw=wid_mine,c=col_kfel,ls=lwi_mine)
-lA110,  =   pA1.plot(pHfull,kFuncs['musc'](argpH),lw=wid_mine,c=col_musc,ls=lwi_mine)
-lA111,  =   pA1.plot(pHfull,kFuncs['anth'](argpH),lw=wid_mine,c=col_anth,ls=lwi_mine)
+lA11,   =   pA1.plot(pHfull,kFuncs['woll'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_woll,ls=lwi_mine)
+lA12,   =   pA1.plot(pHfull,kFuncs['anor'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_anor,ls=lwi_mine)
+lA13,   =   pA1.plot(pHfull,kFuncs['fors'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_fors,ls=lwi_mine)
+lA14,   =   pA1.plot(pHfull,kFuncs['faya'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_faya,ls=lwi_mine)
+lA15,   =   pA1.plot(pHfull,kFuncs['albi'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_albi,ls=lwi_mine)
+lA16,   =   pA1.plot(pHfull,kFuncs['quar'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_quar,ls=lwi_mine)
+lA17,   =   pA1.plot(pHfull,kFuncs['enst'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_enst,ls=lwi_mine)
+lA18,   =   pA1.plot(pHfull,kFuncs['phlo'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_phlo,ls=lwi_mine)
+lA19,   =   pA1.plot(pHfull,kFuncs['kfel'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_kfel,ls=lwi_mine)
+lA110,  =   pA1.plot(pHfull,kFuncs['musc'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_musc,ls=lwi_mine)
+lA111,  =   pA1.plot(pHfull,kFuncs['anth'](np.full_like(pHfull, T288), pHfull),lw=wid_mine,c=col_anth,ls=lwi_mine)
 
 pA1.set_yscale('log')
 pA1.set_xlabel('pH',fontsize=20)
@@ -2426,34 +2428,34 @@ pA1.set_ylabel('$k_{\mathrm{eff}}$ [mol m$^{-2}$ yr$^{-1}$]',fontsize=20)
 pA1.set_ylim([1e-8,1e5])
 pA1.set_xticks(np.linspace(0,14,num=8))
 
-lA21,   =   pA2.plot(T,kFuncs['woll'](argTk),lw=wid_mine,c=col_woll,ls=lwi_mine)
-lA22,   =   pA2.plot(T,kFuncs['anor'](argTk),lw=wid_mine,c=col_anor,ls=lwi_mine)
-lA23,   =   pA2.plot(T,kFuncs['fors'](argTk),lw=wid_mine,c=col_fors,ls=lwi_mine)
-lA24,   =   pA2.plot(T,kFuncs['faya'](argTk),lw=wid_mine,c=col_faya,ls=lwi_mine)
-lA25,   =   pA2.plot(T,kFuncs['albi'](argTk),lw=wid_mine,c=col_albi,ls=lwi_mine)
-lA26,   =   pA2.plot(T,kFuncs['quar'](argTk),lw=wid_mine,c=col_quar,ls=lwi_mine)
-lA27,   =   pA2.plot(T,kFuncs['enst'](argTk),lw=wid_mine,c=col_enst,ls=lwi_mine)
-lA28,   =   pA2.plot(T,kFuncs['phlo'](argTk),lw=wid_mine,c=col_phlo,ls=lwi_mine)
-lA29,   =   pA2.plot(T,kFuncs['kfel'](argTk),lw=wid_mine,c=col_kfel,ls=lwi_mine)
-lA210,  =   pA2.plot(T,kFuncs['musc'](argTk),lw=wid_mine,c=col_musc,ls=lwi_mine)
-lA211,  =   pA2.plot(T,kFuncs['anth'](argTk),lw=wid_mine,c=col_anth,ls=lwi_mine)
+lA21,   =   pA2.plot(T,kFuncs['woll'](T, np.full_like(T, 7)),lw=wid_mine,c=col_woll,ls=lwi_mine)
+lA22,   =   pA2.plot(T,kFuncs['anor'](T, np.full_like(T, 7)),lw=wid_mine,c=col_anor,ls=lwi_mine)
+lA23,   =   pA2.plot(T,kFuncs['fors'](T, np.full_like(T, 7)),lw=wid_mine,c=col_fors,ls=lwi_mine)
+lA24,   =   pA2.plot(T,kFuncs['faya'](T, np.full_like(T, 7)),lw=wid_mine,c=col_faya,ls=lwi_mine)
+lA25,   =   pA2.plot(T,kFuncs['albi'](T, np.full_like(T, 7)),lw=wid_mine,c=col_albi,ls=lwi_mine)
+lA26,   =   pA2.plot(T,kFuncs['quar'](T, np.full_like(T, 7)),lw=wid_mine,c=col_quar,ls=lwi_mine)
+lA27,   =   pA2.plot(T,kFuncs['enst'](T, np.full_like(T, 7)),lw=wid_mine,c=col_enst,ls=lwi_mine)
+lA28,   =   pA2.plot(T,kFuncs['phlo'](T, np.full_like(T, 7)),lw=wid_mine,c=col_phlo,ls=lwi_mine)
+lA29,   =   pA2.plot(T,kFuncs['kfel'](T, np.full_like(T, 7)),lw=wid_mine,c=col_kfel,ls=lwi_mine)
+lA210,  =   pA2.plot(T,kFuncs['musc'](T, np.full_like(T, 7)),lw=wid_mine,c=col_musc,ls=lwi_mine)
+lA211,  =   pA2.plot(T,kFuncs['anth'](T, np.full_like(T, 7)),lw=wid_mine,c=col_anth,ls=lwi_mine)
 
 pA2.set_yscale('log')
 pA2.set_xlabel('$T$ [K]',fontsize=20)
 pA2.set_ylabel('$k_{\mathrm{eff}}$ [mol m$^{-2}$ yr$^{-1}$]',fontsize=20)
 pA2.set_ylim([1e-8,1e5])
 
-lA31,   =   pA3.plot(pHfull,kFuncs['woll'](argpH2),lw=wid_mine,c=col_woll,ls=lwi_mine)
-lA32,   =   pA3.plot(pHfull,kFuncs['anor'](argpH2),lw=wid_mine,c=col_anor,ls=lwi_mine)
-lA33,   =   pA3.plot(pHfull,kFuncs['fors'](argpH2),lw=wid_mine,c=col_fors,ls=lwi_mine)
-lA34,   =   pA3.plot(pHfull,kFuncs['faya'](argpH2),lw=wid_mine,c=col_faya,ls=lwi_mine)
-lA35,   =   pA3.plot(pHfull,kFuncs['albi'](argpH2),lw=wid_mine,c=col_albi,ls=lwi_mine)
-lA36,   =   pA3.plot(pHfull,kFuncs['quar'](argpH2),lw=wid_mine,c=col_quar,ls=lwi_mine)
-lA37,   =   pA3.plot(pHfull,kFuncs['enst'](argpH2),lw=wid_mine,c=col_enst,ls=lwi_mine)
-lA38,   =   pA3.plot(pHfull,kFuncs['phlo'](argpH2),lw=wid_mine,c=col_phlo,ls=lwi_mine)
-lA39,   =   pA3.plot(pHfull,kFuncs['kfel'](argpH2),lw=wid_mine,c=col_kfel,ls=lwi_mine)
-lA310,  =   pA3.plot(pHfull,kFuncs['musc'](argpH2),lw=wid_mine,c=col_musc,ls=lwi_mine)
-lA311,  =   pA3.plot(pHfull,kFuncs['anth'](argpH2),lw=wid_mine,c=col_anth,ls=lwi_mine)
+lA31,   =   pA3.plot(pHfull,kFuncs['woll'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_woll,ls=lwi_mine)
+lA32,   =   pA3.plot(pHfull,kFuncs['anor'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_anor,ls=lwi_mine)
+lA33,   =   pA3.plot(pHfull,kFuncs['fors'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_fors,ls=lwi_mine)
+lA34,   =   pA3.plot(pHfull,kFuncs['faya'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_faya,ls=lwi_mine)
+lA35,   =   pA3.plot(pHfull,kFuncs['albi'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_albi,ls=lwi_mine)
+lA36,   =   pA3.plot(pHfull,kFuncs['quar'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_quar,ls=lwi_mine)
+lA37,   =   pA3.plot(pHfull,kFuncs['enst'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_enst,ls=lwi_mine)
+lA38,   =   pA3.plot(pHfull,kFuncs['phlo'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_phlo,ls=lwi_mine)
+lA39,   =   pA3.plot(pHfull,kFuncs['kfel'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_kfel,ls=lwi_mine)
+lA310,  =   pA3.plot(pHfull,kFuncs['musc'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_musc,ls=lwi_mine)
+lA311,  =   pA3.plot(pHfull,kFuncs['anth'](np.full_like(pHfull, 348), pHfull),lw=wid_mine,c=col_anth,ls=lwi_mine)
 
 pA3.set_yscale('log')
 pA3.set_xlabel('pH',fontsize=20)
@@ -2461,17 +2463,17 @@ pA3.set_ylabel('$k_{\mathrm{eff}}$ [mol m$^{-2}$ yr$^{-1}$]',fontsize=20)
 pA3.set_ylim([1e-8,1e5])
 pA3.set_xticks(np.linspace(0,14,num=8))
 
-lA41,   =   pA4.plot(T,kFuncs['woll'](argTk2),lw=wid_mine,c=col_woll,ls=lwi_mine)
-lA42,   =   pA4.plot(T,kFuncs['anor'](argTk2),lw=wid_mine,c=col_anor,ls=lwi_mine)
-lA43,   =   pA4.plot(T,kFuncs['fors'](argTk2),lw=wid_mine,c=col_fors,ls=lwi_mine)
-lA44,   =   pA4.plot(T,kFuncs['faya'](argTk2),lw=wid_mine,c=col_faya,ls=lwi_mine)
-lA45,   =   pA4.plot(T,kFuncs['albi'](argTk2),lw=wid_mine,c=col_albi,ls=lwi_mine)
-lA46,   =   pA4.plot(T,kFuncs['quar'](argTk2),lw=wid_mine,c=col_quar,ls=lwi_mine)
-lA47,   =   pA4.plot(T,kFuncs['enst'](argTk2),lw=wid_mine,c=col_enst,ls=lwi_mine)
-lA48,   =   pA4.plot(T,kFuncs['phlo'](argTk2),lw=wid_mine,c=col_phlo,ls=lwi_mine)
-lA49,   =   pA4.plot(T,kFuncs['kfel'](argTk2),lw=wid_mine,c=col_kfel,ls=lwi_mine)
-lA410,  =   pA4.plot(T,kFuncs['musc'](argTk2),lw=wid_mine,c=col_musc,ls=lwi_mine)
-lA411,  =   pA4.plot(T,kFuncs['anth'](argTk2),lw=wid_mine,c=col_anth,ls=lwi_mine)
+lA41,   =   pA4.plot(T,kFuncs['woll'](T, np.full_like(T, 10)),lw=wid_mine,c=col_woll,ls=lwi_mine)
+lA42,   =   pA4.plot(T,kFuncs['anor'](T, np.full_like(T, 10)),lw=wid_mine,c=col_anor,ls=lwi_mine)
+lA43,   =   pA4.plot(T,kFuncs['fors'](T, np.full_like(T, 10)),lw=wid_mine,c=col_fors,ls=lwi_mine)
+lA44,   =   pA4.plot(T,kFuncs['faya'](T, np.full_like(T, 10)),lw=wid_mine,c=col_faya,ls=lwi_mine)
+lA45,   =   pA4.plot(T,kFuncs['albi'](T, np.full_like(T, 10)),lw=wid_mine,c=col_albi,ls=lwi_mine)
+lA46,   =   pA4.plot(T,kFuncs['quar'](T, np.full_like(T, 10)),lw=wid_mine,c=col_quar,ls=lwi_mine)
+lA47,   =   pA4.plot(T,kFuncs['enst'](T, np.full_like(T, 10)),lw=wid_mine,c=col_enst,ls=lwi_mine)
+lA48,   =   pA4.plot(T,kFuncs['phlo'](T, np.full_like(T, 10)),lw=wid_mine,c=col_phlo,ls=lwi_mine)
+lA49,   =   pA4.plot(T,kFuncs['kfel'](T, np.full_like(T, 10)),lw=wid_mine,c=col_kfel,ls=lwi_mine)
+lA410,  =   pA4.plot(T,kFuncs['musc'](T, np.full_like(T, 10)),lw=wid_mine,c=col_musc,ls=lwi_mine)
+lA411,  =   pA4.plot(T,kFuncs['anth'](T, np.full_like(T, 10)),lw=wid_mine,c=col_anth,ls=lwi_mine)
 
 pA4.set_yscale('log')
 pA4.set_xlabel('$T$ [K]',fontsize=20)
@@ -2492,7 +2494,7 @@ plt.savefig('k_eff.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. B1: Plot HCO3- vs xCO2, T and P for peridotite
 
-fig3 = plt.figure(figsize=(5,15),tight_layout=True)
+fig3 = plt.figure(figsize=(5,15))
 spec3 = gridspec.GridSpec(ncols=1, nrows=3, figure=fig3)
 
 p31 = fig3.add_subplot(spec3[0,0])
@@ -2578,7 +2580,7 @@ plt.savefig('HCO3eq_all_peri.pdf',format='pdf',bbox_inches='tight')
 # %%
 # Fig. B3: Plot generalized DIC vs xCO2 for all rocks and minerals
 
-fig2 = plt.figure(constrained_layout=False,figsize=(15,20),tight_layout=True)
+fig2 = plt.figure(figsize=(15,20))
 spec2 = gridspec.GridSpec(ncols=3, nrows=6, figure=fig2)
 
 p21  = fig2.add_subplot(spec2[0,0])
@@ -3179,7 +3181,8 @@ Dw0       = 0.03
 # Parameters, This work, Granite
 C_eq1     = DICeqFuncs['grah']['HCO3']([xCO2g0,T288,P0])
 C_eq11    = C_eq1*1e6
-keff1     = kFuncs['kfel']([T288,DICeqFuncs['grah']['pH']([xCO2g0,T288,P0])])
+pH        = DICeqFuncs['grah']['pH']([xCO2g0,T288,P0])
+keff1     = kFuncs['kfel'](np.full_like(pH,T288), pH)
 mol_mass1 = 0.27
 L1        = 1
 phi1      = 0.175
@@ -3189,7 +3192,7 @@ Dw1       = tr.Dw_GRAN()
 
 # Fig9: Dw sensitivity to parameters and comparison between this work and MACH
 
-fig1 = plt.figure(constrained_layout=False,figsize=(15,15),tight_layout=True)
+fig1 = plt.figure(figsize=(15,15))
 spec1 = gridspec.GridSpec(ncols=3, nrows=3, figure=fig1)
 p11 = fig1.add_subplot(spec1[0,0])
 p12 = fig1.add_subplot(spec1[0,1])
@@ -3336,7 +3339,7 @@ for i in range(len(PCO2)):
     WHAKp[i] = cl.T_WHAK(PCO2[i], albedo = 0.3)
     KATAp[i] = cl.T_KATA(PCO2[i], albedo = 0.3)
     
-fig1 = plt.figure(constrained_layout=False,figsize=(10,5),tight_layout=True)
+fig1 = plt.figure(figsize=(10,5))
 spec1 = gridspec.GridSpec(ncols=2, nrows=1, figure=fig1)
 p11 = fig1.add_subplot(spec1[0,0])
 p12 = fig1.add_subplot(spec1[0,1])
