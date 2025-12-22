@@ -10,3 +10,4 @@ database/.RData
 database/.DS_Store
 *.pdf
 .venv/
+*.pyc
